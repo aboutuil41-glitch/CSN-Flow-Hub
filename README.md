@@ -16,11 +16,6 @@ Built during my internship.
 - **Frontend:** React, Tailwind CSS (in `frontend/`)
 - **Backend:** Laravel, MySQL (in `backend/`)
 
-## Screenshots
-
-![Dashboard](docs/dashboard.png)
-
-## Getting started
 
 ### Backend (check)
 

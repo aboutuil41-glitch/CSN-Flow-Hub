@@ -1,0 +1,97 @@
+# CSN Platform
+
+A project/task management platform for agencies working with clients — clients create projects and leave feedback, team members handle tasks and files, and admins oversee everything. Client feedback can be AI-simplified into a sentiment, priority, and suggested action.
+
+## Roles
+
+There are three roles, and most of the UI and API behavior branches on this:
+
+| Role    | Can do |
+|---------|--------|
+| `client` | Create projects, upload feedback on files, view their own projects/files |
+| `team`   | Upload/manage files, comment, work tasks assigned to them |
+| `admin`  | Everything — assign members/tasks, update roles, complete/hold projects, delete, view the admin dashboard and activity log |
+
+## Tech stack
+
+**Frontend**
+- React + Vite
+- `react-router-dom` — routing, with `ProtectedRoute` gating by auth + role
+- `@tanstack/react-query` — server state, caching, mutations
+- `react-hook-form` + `zod` — form state and validation
+- `axios` — API client (bearer token via Sanctum)
+- `lucide-react` — icons
+
+**Backend**
+- Laravel
+- Laravel Sanctum — token-based API auth
+- OpenAPI attributes (`OpenApi\Attributes`) on controllers for API docs generation
+- Local `public` disk for file storage
+
+## Features
+
+- **Auth** — register, login, logout (Sanctum tokens)
+- **Dashboard** — role-specific summary (clients see project stats, team/admin see current tasks) plus recent projects
+- **Projects** — create with attachments, assign team members, mark complete/on-hold, delete
+- **Tasks** — create per project, assign to a team member, the assignee updates status, admin can delete
+- **My Tasks** — tasks assigned to the current user
+- **Files** — upload/download/view/delete per project
+- **Feedback** — clients leave comments/approvals/change requests/blocked notices on files; team/admin can request an AI-simplified summary (sentiment, priority, suggested action)
+- **Admin panel** — platform statistics, role management, member/task assignment, task creation, and a filterable/paginated activity log
+- **Activity log** — most write actions (create/update/delete/assign) are recorded with actor, action, subject, and metadata
+
+## Project structure (frontend)
+
+```
+src/
+  api/            axios calls per resource (projects.js, tasks.js, files.js, feedback.js, admin.js, users.js)
+  components/     shared UI pieces (TaskCard, FilePreview, CreateProjectModal, Navbar, ...)
+  context/        AuthContext (token/user state, login/logout)
+  layouts/        per-page CSS
+  pages/          route-level components (Login, Register, Dashboard, Projects, Tasks, MyTasks, Files, Admin)
+  utils/          small shared helpers (viewFile.js)
+  config.js       shared constants (e.g. STORAGE_URL)
+```
+
+## Setup
+
+**Backend**
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan storage:link   # required — files are served from the public disk
+php artisan serve
+```
+
+**Frontend**
+```bash
+npm install
+npm run dev
+```
+
+Make sure the frontend's axios base URL and the backend's CORS/Sanctum config point at each other (e.g. `http://127.0.0.1:8000/api` and `http://localhost:5173`).
+
+## Known quirks / things to be aware of
+
+- **The `Project` status column is genuinely named `statue`** (not `status`) throughout the backend — it's a typo baked into the schema, not a bug. `Task` status is spelled correctly (`status`). Don't "fix" one to match the other.
+- **File viewing and downloading both go through the authenticated backend endpoint** (not a raw public storage link), via the shared `viewFile()` helper in `utils/viewFile.js` — this keeps view/download access control and activity logging consistent.
+- Several backend permission checks return `200 OK` with `{"message": "no"}` instead of a `403`, so a rejected action can look like a "successful" mutation on the frontend. The UI currently avoids this by hiding restricted actions per role, but it's worth tightening backend-side if new restricted actions are added.
+- `TaskCommentController` exists on the backend but isn't wired into the frontend yet.
+- `NotificationController` is a stub — no notification feature exists yet.
+- Feedback `type` has four values: `comment`, `approval`, `change_request`, `blocked`.
+
+## API overview
+
+| Resource | Base routes |
+|---|---|
+| Auth | `POST /register`, `POST /login`, `POST /logout` |
+| Dashboard | `GET /dashboard` |
+| Projects | `GET/POST /project(s)`, `GET /project/{project}`, `POST /project/{project}/assign/{user}`, `PUT /project/{project}/complete`, `PUT /project/{project}/hold`, `DELETE /project/{project}` |
+| Tasks | `GET/POST /tasks/{project}`, `POST /task/{task}/assign/{user}`, `PUT /task/{task}`, `DELETE /task/{task}`, `GET /tasks/mine` |
+| Files | `GET/POST /projects/{project}/files`, `GET /files/{file}/download`, `DELETE /files/{file}` |
+| Feedback | `GET/POST /file/{file}/feedback`, `GET /feedback/{feedback}/simplify` |
+| Task Comments | `GET/POST /comment/{task}`, `DELETE /comment/{comment}` (backend only, unused) |
+| Admin | `GET /admin/statistic`, `PUT /admin/{user}` |
+| Activity Log | `GET /activity-logs` |

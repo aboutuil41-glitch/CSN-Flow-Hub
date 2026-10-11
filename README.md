@@ -36,11 +36,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-## My role
-
-Write 2–3 lines here: what you built (for example, "the feedback screens and the summarizer integration") and what you learned.
-
 ## Status
 
 Internship project. Not currently deployed.
